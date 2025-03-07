@@ -1,12 +1,14 @@
-import { View, Text, TextInput, Button, TouchableOpacity, StyleSheet, ImageBackground, Image, Alert, Modal } from 'react-native';
+import { View, Text, TextInput, Button, TouchableOpacity, TouchableWithoutFeedback, StyleSheet, ImageBackground, Image, Alert, Modal } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import { supabase } from '../supabase';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabase';
+import { decode } from 'base-64';
+import { FileObject } from '@supabase/storage-js'
 
-export default function Home() {
+export default function Profile() {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [gender, setGender] = useState('');
@@ -20,52 +22,83 @@ export default function Home() {
 
     const navigation = useNavigation();
 
+    const convertToBlob = async (uri) => {
+        const response = await fetch(uri); // Fetch the local file
+        const blob = await response.blob(); // Convert to Blob
+        return blob;
+    };
+
+    const uploadImage = async (imgUri, userEmail) => {
+        try {
+            const fileExt = imgUri.split('.').pop();
+            const filePath = `${userEmail}/${Date.now()}.${fileExt}`;
+
+            const formData = new FormData();
+            formData.append('file', { uri: imgUri, name: `upload.${fileExt}`, type: `image/${fileExt}` });
+
+            const { data, error } = await supabase.storage
+                .from('profile_pictures')
+                .upload(filePath, formData, {
+                    contentType: `image/${fileExt}`,
+                    cacheControl: '3600',
+                    upsert: true,
+                });
+
+            if (error) throw error;
+            console.log('✅ Image uploaded successfully:', data);
+            return data.path;
+        } catch (error) {
+            console.error('❌ Error in uploadImage:', error);
+        }
+    };
+
+
+
+
+
     const onSelectImage = async () => {
-        let result = await ImagePicker.launchImageLibraryAsync({
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError || !sessionData?.session?.user) {
+            console.error('❌ User not found:', sessionError?.message);
+            return;
+        }
+
+        const user = sessionData.session.user;
+
+        const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            aspect: [1, 1],
             quality: 1,
         });
 
         if (!result.canceled) {
-            setProfilePicture(result.assets[0].uri);
-            // TODO: Upload image to Supabase
-            const { uri } = result.assets[0];
-            const fileName = uri.split('/').pop();
-            const fileType = fileName.split('.').pop();
+            const imgUri = result.assets[0].uri;
+            console.log('📸 Selected Image URI:', imgUri);
 
-            // Convert image to base64 for upload
-            const base64 = await FileSystem.readAsStringAsync(uri, {
-                encoding: FileSystem.EncodingType.Base64,
-            });
-
-            // Upload to Supabase Storage
-            const { data, error } = await supabase.storage
-                .from('profile_pictures')
-                .upload(`public/${fileName}`, Buffer.from(base64, 'base64'), {
-                    contentType: `image/${fileType}`,
-                });
-
-            if (error) {
-                Alert.alert("Upload failed", error.message);
+            // Test network
+            try {
+                const testResponse = await fetch('https://www.google.com');
+                console.log('✅ Network Test Successful:', testResponse.status);
+            } catch (error) {
+                console.error('❌ Network error:', error);
                 return;
             }
 
-            // Get public URL of the uploaded image
-            const { data: imageUrl } = supabase.storage.from('profile_pictures').getPublicUrl(`public/${fileName}`);
+            // Upload the image
+            const imageUrl = await uploadImage(imgUri, user.email);
+            const response = await fetch(imgUri);
+            console.log('🔍 Fetch response:', response);
 
-            setProfilePicture(imageUrl.publicUrl);
-
-            // Save URL to database
-            await supabase.from('users_details').update({ profilePicture: imageUrl.publicUrl }).eq('email', email);
+            if (imageUrl) {
+                setProfilePicture(imageUrl);
+            }
         }
-    }
-
+    };
 
     const changePassword = async () => {
         if (!newPassword) {
-            Alert.alert("Error", "Please enter a new password");
+            Alert.alert("Failed", "Please enter a new password");
             return;
         }
         const { error } = await supabase.auth.updateUser({
@@ -73,7 +106,7 @@ export default function Home() {
         });
 
         if (error) {
-            Alert.alert("Error", error.message);
+            Alert.alert("Failed", error.message);
         } else {
             Alert.alert("Success", "Password changed successfully!");
             setModalVisible(false); // Close modal after success
@@ -83,24 +116,34 @@ export default function Home() {
 
     useEffect(() => {
         const fetchUserProfile = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                setUsername(user.user_metadata?.username || "No Username");
-                setEmail(user.email || "No Email");
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                Alert.alert("Error", "User not authenticated");
+                return;
+            }
 
-                const { data, error } = await supabase.from('users_details').select('gender, interests, contact, profilePicture').single();
-                if (data) {
-                    setGender(data.gender || "Not specified");
-                    setInterests(data.interests || "No interests");
-                    setContact(data.contact || "No contact info");
-                    setProfilePicture(data.profilePicture || "https://i.pinimg.com/236x/31/f4/ea/31f4ea5f4e930b9d6c9e3e0cef0c0f7f.jpg");
-                } else if (error) {
-                    Alert.alert("Error fetching user data:", error.message);
-                }
+            setUsername(user.user_metadata?.username || "No Username");
+            setEmail(user.email || "No Email");
+
+            const { data, error } = await supabase
+                .from('users_details')
+                .select('gender, interests, contact, profilePicture')
+                .eq('email', user.email)
+                .single();
+
+            if (data) {
+                setGender(data.gender || "Not specified");
+                setInterests(data.interests || "No interests");
+                setContact(data.contact || "No contact info");
+                setProfilePicture(data.profilePicture || "https://i.pinimg.com/236x/31/f4/ea/31f4ea5f4e930b9d6c9e3e0cef0c0f7f.jpg");
+            } else if (error) {
+                Alert.alert("Error", error.message);
             }
         };
+
         fetchUserProfile();
     }, []);
+
 
     const handleLogout = async () => {
         try {
@@ -146,6 +189,28 @@ export default function Home() {
                 </View>
 
                 <View style={styles.updateView}>
+                    <Modal transparent={true} visible={modalVisible}>
+                        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+                            <View style={styles.modalOverlay}>
+                                <View style={styles.modalContainer}>
+                                    <Text style={styles.modalTitle}>Enter New</Text>
+                                    <TextInput
+                                        secureTextEntry
+                                        placeholder="New password"
+                                        value={newPassword}
+                                        onChangeText={setNewPassword}
+                                        style={styles.input}
+                                    />
+                                    <TouchableOpacity style={styles.modalButton} onPress={changePassword}>
+                                        <Text style={styles.modalButtonText}>Submit</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
+                                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </Modal>
                     <TouchableOpacity onPress={() => { navigation.navigate('UpdateProfile') }}>
                         <Text style={styles.update}>Update Info</Text>
                     </TouchableOpacity>
@@ -164,29 +229,29 @@ export default function Home() {
                             <Text style={styles.buttonText}>Logout</Text>
                         </TouchableOpacity>
                     </View>
-                    <Modal visible={modalVisible} animationType="slide">
-                        <View style={styles.modalOverlay}>
-                            <View style={styles.modalContainer}>
-                                <Text style={styles.modalTitle}>Enter New Password</Text>
-                                <TextInput
-                                    secureTextEntry
-                                    placeholder="New password"
-                                    value={newPassword}
-                                    onChangeText={setNewPassword}
-                                    style={styles.input}
-                                />
-                                {/* <Button title="Submit" onPress={changePassword} />
-                                <Button title="Cancel" onPress={() => setModalVisible(false)} /> */}
-                                <TouchableOpacity style={styles.modalButton} onPress={changePassword}>
-                                    <Text style={styles.modalButtonText}>Submit</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                                </TouchableOpacity>
+                    <Modal transparent={true} visible={modalVisible}>
+                        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+                            <View style={styles.modalOverlay}>
+                                <View style={styles.modalContainer}>
+                                    <Text style={styles.modalTitle}>Enter New Password</Text>
+                                    <TextInput
+                                        secureTextEntry
+                                        placeholder="New password"
+                                        value={newPassword}
+                                        onChangeText={setNewPassword}
+                                        style={styles.input}
+                                    />
+                                    <TouchableOpacity style={styles.modalButton} onPress={changePassword}>
+                                        <Text style={styles.modalButtonText}>Submit</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
+                                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </View>
+                        </TouchableWithoutFeedback>
                     </Modal>
+
                 </View>
             </View>
         </ImageBackground>
