@@ -36,7 +36,7 @@ function HomeTabs() {
         headerShown: false, // Hide top header
       })}
     >
-      <Tab.Screen name="Home" component={Profile} />
+      <Tab.Screen name="Home" component={Home} />
       <Tab.Screen name="Match" component={Match} />
       <Tab.Screen name="Chat" component={Chat} />
       <Tab.Screen name="Profile" component={Profile} />

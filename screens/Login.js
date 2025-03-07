@@ -23,7 +23,7 @@ const LoginScreen = ({ navigation }) => {
                 if (error) throw error;
                 navigation.navigate('Home');
             } catch (error) {
-                setErrorMessage('Login failed. Please try again.');
+                setErrorMessage('Incorrect email or Password.');
             }
 
         } else {
@@ -32,23 +32,6 @@ const LoginScreen = ({ navigation }) => {
 
 
     };
-
-    // const forgetPassword = async () => {
-    //     if (!email) {
-    //         Alert.alert('Enter your email to reset your password');
-    //         return;
-    //     }
-
-    //     try {
-    //         const { error } = await supabase.auth.resetPasswordForEmail(email);
-
-    //         if (error) throw error;
-
-    //         Alert.alert('Password reset link sent to your email.');
-    //     } catch (error) {
-    //         Alert.alert(error.message || 'Failed to send reset link.');
-    //     }
-    // };
 
     return (
         <>

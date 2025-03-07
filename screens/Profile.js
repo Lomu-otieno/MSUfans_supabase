@@ -10,6 +10,7 @@ import { FileObject } from '@supabase/storage-js'
 
 
 export default function Profile() {
+    const avatar = { uri: ('https://i.pinimg.com/236x/41/76/b9/4176b9b864c1947320764e82477c168f.jpg') }
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [gender, setGender] = useState('');
@@ -20,7 +21,6 @@ export default function Profile() {
     const [modalVisible, setModalVisible] = useState(false);
     const [newPassword, setNewPassword] = useState('');
 
-    const avatar = { uri: ('https://i.pinimg.com/474x/76/f3/f3/76f3f3007969fd3b6db21c744e1ef289.jpg') }
 
 
     const navigation = useNavigation();
@@ -150,7 +150,7 @@ export default function Profile() {
                 .list(user.email + "/", { limit: 1, sortBy: { column: "created_at", order: "desc" } });
 
             if (storageError || !files || files.length === 0) {
-                console.error("Error fetching profile picture:", storageError?.message);
+                Alert.alert("Alert", "profile picture required");
             } else {
                 const latestImagePath = user.email + "/" + files[0].name;
                 const { data: imageUrl } = supabase.storage.from('profile_pictures').getPublicUrl(latestImagePath);
@@ -160,12 +160,6 @@ export default function Profile() {
 
         fetchUserProfile();
     }, []);
-
-
-
-
-
-
 
     const handleLogout = async () => {
         try {
