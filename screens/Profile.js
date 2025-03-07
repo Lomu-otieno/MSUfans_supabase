@@ -8,6 +8,7 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabase';
 import { decode } from 'base-64';
 import { FileObject } from '@supabase/storage-js'
 
+
 export default function Profile() {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -18,6 +19,8 @@ export default function Profile() {
     const [errorMessage, setErrorMessage] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
     const [newPassword, setNewPassword] = useState('');
+
+    const avatar = { uri: ('https://i.pinimg.com/474x/76/f3/f3/76f3f3007969fd3b6db21c744e1ef289.jpg') }
 
 
     const navigation = useNavigation();
@@ -125,9 +128,10 @@ export default function Profile() {
             setUsername(user.user_metadata?.username || "No Username");
             setEmail(user.email || "No Email");
 
+            // Fetch user details excluding profile picture
             const { data, error } = await supabase
                 .from('users_details')
-                .select('gender, interests, contact, profilePicture')
+                .select('gender, interests, contact')
                 .eq('email', user.email)
                 .single();
 
@@ -135,14 +139,32 @@ export default function Profile() {
                 setGender(data.gender || "Not specified");
                 setInterests(data.interests || "No interests");
                 setContact(data.contact || "No contact info");
-                setProfilePicture(data.profilePicture || "https://i.pinimg.com/236x/31/f4/ea/31f4ea5f4e930b9d6c9e3e0cef0c0f7f.jpg");
             } else if (error) {
                 Alert.alert("Error", error.message);
+            }
+
+            // Fetch the latest profile picture from storage
+            const { data: files, error: storageError } = await supabase
+                .storage
+                .from('profile_pictures')
+                .list(user.email + "/", { limit: 1, sortBy: { column: "created_at", order: "desc" } });
+
+            if (storageError || !files || files.length === 0) {
+                console.error("Error fetching profile picture:", storageError?.message);
+            } else {
+                const latestImagePath = user.email + "/" + files[0].name;
+                const { data: imageUrl } = supabase.storage.from('profile_pictures').getPublicUrl(latestImagePath);
+                setProfilePicture(imageUrl.publicUrl);
             }
         };
 
         fetchUserProfile();
     }, []);
+
+
+
+
+
 
 
     const handleLogout = async () => {
@@ -168,7 +190,7 @@ export default function Profile() {
                 {/* Profile Section */}
                 <View style={styles.profileContainer}>
                     <View style={styles.profileWrapper}>
-                        <Image source={{ uri: profilePicture || "https://i.pinimg.com/236x/31/f4/ea/31f4ea5f4e930b9d6c9e3e0cef0c0f7f.jpg" }} style={styles.profileImage} />
+                        <Image source={profilePicture ? { uri: profilePicture } : avatar} style={styles.profileImage} />
                         <TouchableOpacity style={styles.cameraButton} onPress={onSelectImage}>
                             <Ionicons name="camera-outline" size={30} color={"#fff"} />
                         </TouchableOpacity>
