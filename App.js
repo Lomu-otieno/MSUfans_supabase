@@ -1,13 +1,15 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { Linking } from "react-native";
 
+// Import Screens
 import SignupScreen from "./screens/Signup";
 import LoginScreen from "./screens/Login";
 import ForgotPassScreen from "./screens/ForgotPassScreen";
-import Home from "./screens/Home";
+import HomeScreen from "./screens/Home";
 import Match from "./screens/Match";
 import Chat from "./screens/Chat";
 import Profile from "./screens/Profile";
@@ -36,7 +38,7 @@ function HomeTabs() {
         headerShown: false, // Hide top header
       })}
     >
-      <Tab.Screen name="Home" component={Home} />
+      <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Match" component={Match} />
       <Tab.Screen name="Chat" component={Chat} />
       <Tab.Screen name="Profile" component={Profile} />
@@ -46,8 +48,23 @@ function HomeTabs() {
 
 // ✅ Main Stack Navigator
 export default function App() {
+  const navigationRef = useRef(null);
+
+  useEffect(() => {
+    const handleDeepLink = (event) => {
+      const { url } = event;
+      console.log("Deep link opened:", url);
+
+      if (url.includes("reset-password") && navigationRef.current) {
+        navigationRef.current.navigate("ForgotPassScreen");
+      }
+    };
+    // Linking.addEventListener("url", handleDeepLink);
+    // return () => Linking.removeEventListener("url", handleDeepLink);
+  }, []);
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />

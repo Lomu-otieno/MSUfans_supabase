@@ -2,7 +2,11 @@ import React from "react";
 import { View, Text, StyleSheet, FlatList, Image, ScrollView, TouchableOpacity, PixelRatio } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import { Dimensions } from "react-native";
+import { supabase } from "../supabase";
+import { useState, useEffect } from "react";
 
+const { width } = Dimensions.get("window");
 const stories = [
     { id: "1", image: "https://i.pinimg.com/236x/ed/20/5a/ed205aff1fb33c28ddd8bfc7f3e7ff29.jpg", username: "You" },
     { id: "2", image: "https://picsum.photos/101", username: "Emily" },
@@ -49,6 +53,7 @@ const HomeScreen = () => {
                     keyExtractor={(item) => item.id}
                     initialNumToRender={5}
                     windowSize={3}
+                    showsVerticalScrollIndicator={false}
                     renderItem={({ item }) => (
                         <View style={styles.post}>
                             <Text style={styles.postUsername}>{item.username}</Text>
@@ -75,10 +80,10 @@ const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#fff" },
+    container: { flex: 1, backgroundColor: "#fff", },
 
     // Header
-    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 15 },
+    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 15, marginTop: 18 },
     title: { fontSize: 18, fontWeight: "bold", alignSelf: "center" },
 
     // Stories
@@ -90,7 +95,7 @@ const styles = StyleSheet.create({
     // Posts
     post: { padding: 15 },
     postUsername: { fontWeight: "bold", fontSize: 16, marginBottom: 5 },
-    postImage: { width: "100%", height: 400, borderRadius: 10 },
+    postImage: { width: "100%", height: width * 1.4, borderRadius: 10 },
     postActions: { flexDirection: "row", alignItems: "center", marginTop: 10, justifyContent: 'space-around' },
     actionButton: { flexDirection: "row", alignItems: "center", gap: 5 }
 });

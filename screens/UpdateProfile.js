@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, ImageBackground } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../supabase'; // Ensure Supabase is initialized
 
 const UpdateProfile = () => {
     const navigation = useNavigation();
 
+    const image = { uri: 'https://i.pinimg.com/736x/2f/32/42/2f3242ec97af6ba316a0de5d5e9ecc83.jpg' }
+    //https://i.pinimg.com/236x/ca/7f/e3/ca7fe301cc4e70dfe0f3fe1ae93cc02c.jpg
+    //https://i.pinimg.com/236x/2f/32/42/2f3242ec97af6ba316a0de5d5e9ecc83.jpg
     const [interests, setInterests] = useState('');
     const [gender, setGender] = useState('');
     const [contact, setContact] = useState('');
@@ -93,35 +96,41 @@ const UpdateProfile = () => {
     }
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Update Profile</Text>
+        <ImageBackground source={image} style={{ flex: 1, justifyContent: 'center' }} resizeMode={'cover'}>
 
-            <TextInput
-                placeholder="Your interests (comma separated)"
-                value={interests}
-                onChangeText={setInterests}
-                style={styles.input}
-            />
+            <View style={styles.container}>
+                <Text style={styles.title}>Update <Text style={{ color: "#fff" }}>Profile</Text></Text>
 
-            <TextInput
-                placeholder="Gender (e.g. Male, Female, Other)"
-                value={gender}
-                onChangeText={setGender}
-                style={styles.input}
-            />
+                <TextInput
+                    placeholder="Your interests (comma separated)"
+                    value={interests}
+                    onChangeText={setInterests}
+                    style={styles.input}
+                />
 
-            <TextInput
-                placeholder="Contact"
-                value={contact}
-                onChangeText={setContact}
-                keyboardType="phone-pad"
-                style={styles.input}
-            />
+                <TextInput
+                    placeholder="Gender (e.g. Male, Female, Other)"
+                    value={gender}
+                    onChangeText={setGender}
+                    style={styles.input}
+                />
 
-            <TouchableOpacity style={styles.button} onPress={updateProfile} disabled={saving}>
-                <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
-            </TouchableOpacity>
-        </View>
+                <TextInput
+                    placeholder="Contact"
+                    value={contact}
+                    onChangeText={setContact}
+                    keyboardType="phone-pad"
+                    style={styles.input}
+                />
+
+                <TouchableOpacity style={styles.button} onPress={updateProfile} disabled={saving}>
+                    <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
+                </TouchableOpacity>
+                {/* <TouchableOpacity onPress={navigation.navigate('Profile')}>
+                    <Text>Cancel</Text>
+                </TouchableOpacity> */}
+            </View>
+        </ImageBackground>
     );
 };
 
@@ -130,12 +139,13 @@ const styles = {
         flex: 1,
         padding: 20,
         justifyContent: 'center',
-        backgroundColor: '#f8f8f8',
+
     },
     title: {
         fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 20,
+        color: '#000'
     },
     input: {
         borderWidth: 1,

@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, ImageBackground, Alert, TouchableOpacity } from 'react-native';
 import { supabase } from '../supabase'; // Ensure this file has your Supabase config
+import * as Linking from 'expo-linking'
 
 const image = { uri: 'https://i.pinimg.com/736x/19/9a/06/199a06f51bcef14e8d0357912fa53f5b.jpg' };
 
@@ -10,23 +11,41 @@ const ForgotPassScreen = ({ navigation }) => {
     const [focusedInput, setFocusedInput] = useState(null);
     const [errorMessage, setErrorMessage] = useState('');
 
+    const linking = {
+        prefixes: ["real://", "exp://192.168.100.9:8081"],
+        config: {
+            screens: {
+                ResetPasswordScreen: "reset-password",
+            },
+        },
+    };
+
     const handleResetPassword = async () => {
         setErrorMessage('');
+
         if (!email.trim()) {
             setErrorMessage("Please enter your email to reset your password.");
             return;
         }
+
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            const deepLink = Linking.createURL("reset-password");
+
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: deepLink,
+            });
+
             if (error) throw error;
 
-            setErrorMessage("A password reset link has been sent to your email.",
-                [{ text: "OK", onPress: () => navigation.goBack() }]
-            );
+            Alert.alert("Success", "A password reset link has been sent to your email.", [
+                { text: "OK", onPress: () => navigation.goBack() }
+            ]);
         } catch (error) {
             setErrorMessage(error.message || "Check your internet connection and try again.");
         }
     };
+
+
 
     return (
         <>
