@@ -15,13 +15,56 @@ const stories = [
     { id: "5", image: "https://picsum.photos/104", username: "Michael" },
 ];
 
-const posts = [
-    { id: "1", image: "https://i.pinimg.com/474x/fb/d0/a7/fbd0a78875801bd026a85bdf80cd6f85.jpg", username: "Amelia John", likes: "12.5K", comments: "6.8K" },
-    { id: "2", image: "https://i.pinimg.com/474x/1e/e1/fc/1ee1fc4d681f56f9a2ab96fc9df42148.jpg", username: "Shekel Afeni", likes: "8.2K", comments: "5.1K" },
-    { id: "3", image: "https://i.pinimg.com/474x/73/4a/25/734a251b61723478b09a4bb241822cad.jpg", username: "Jane Snow", likes: "2.2K", comments: "1.5K" },
-];
+// const posts = [
+//     { id: "1", image: "https://i.pinimg.com/474x/fb/d0/a7/fbd0a78875801bd026a85bdf80cd6f85.jpg", username: "Amelia John", likes: "12.5K", comments: "6.8K" },
+//     { id: "2", image: "https://i.pinimg.com/474x/1e/e1/fc/1ee1fc4d681f56f9a2ab96fc9df42148.jpg", username: "Shekel Afeni", likes: "8.2K", comments: "5.1K" },
+//     { id: "3", image: "https://i.pinimg.com/474x/73/4a/25/734a251b61723478b09a4bb241822cad.jpg", username: "Jane Snow", likes: "2.2K", comments: "1.5K" },
+// ];
 
 const HomeScreen = () => {
+    const [posts, setPosts] = useState([]);
+
+    useEffect(() => {
+        fetchImages();
+    }, []);
+
+    const fetchImages = async () => {
+        try {
+            // Fetch images from Supabase storage
+            const { data: images, error: imageError } = await supabase.storage.from("profile_pictures").list("", { limit: 20 });
+
+            if (imageError) {
+                console.error("Error fetching images:", imageError);
+                return;
+            }
+
+            // Fetch user details (replace 'profile_picture' with the correct column name)
+            const { data: users, error: userError } = await supabase.from("users_details").select("username, image_url"); // Change `image_url` if necessary
+
+            if (userError) {
+                console.error("Error fetching user details:", userError);
+                return;
+            }
+
+            // Match images with usernames
+            const imagePosts = images.map((file) => {
+                const user = users.find((u) => u.image_url === file.name) || {}; // Match by filename
+                return {
+                    id: file.name, // Use filename as ID
+                    image: supabase.storage.from("profile_pictures").getPublicUrl(file.name).data.publicUrl,
+                    username: user.username || "Unknown User", // Use username if found
+                    likes: `${Math.floor(Math.random() * 10000)} Likes`,
+                    comments: `${Math.floor(Math.random() * 5000)} Comments`,
+                };
+            });
+
+            setPosts(imagePosts);
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        }
+    };
+
+
     return (
         <>
             <StatusBar style="auto" />

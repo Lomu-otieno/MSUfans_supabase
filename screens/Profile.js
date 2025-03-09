@@ -48,12 +48,29 @@ export default function Profile() {
                 });
 
             if (error) throw error;
-            console.log('✅ Image uploaded successfully:', data);
-            return data.path;
+
+            // Get the full public URL
+            const { data: imageUrlData } = supabase.storage
+                .from('profile_pictures')
+                .getPublicUrl(filePath);
+
+            const imageUrl = imageUrlData.publicUrl;
+
+            // Store the file path in the users_details table
+            const { error: updateError } = await supabase
+                .from('users_details')
+                .update({ profile_picture: imageUrl })
+                .eq('email', userEmail);
+
+            if (updateError) throw updateError;
+
+            setProfilePicture(imageUrl);
+            setErrorMessage('Image uploaded successfully!');
         } catch (error) {
-            console.error('❌ Error in uploadImage:', error);
+            setErrorMessage('Error in uploadImage: ' + error.message);
         }
     };
+
 
 
 
@@ -63,7 +80,7 @@ export default function Profile() {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
         if (sessionError || !sessionData?.session?.user) {
-            console.error('❌ User not found:', sessionError?.message);
+            console.error('User not found:', sessionError?.message);
             return;
         }
 
@@ -131,7 +148,7 @@ export default function Profile() {
             // Fetch user details excluding profile picture
             const { data, error } = await supabase
                 .from('users_details')
-                .select('gender, interests, contact')
+                .select('gender, interests, contact, profile_picture')
                 .eq('email', user.email)
                 .single();
 
