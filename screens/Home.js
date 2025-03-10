@@ -1,3 +1,4 @@
+
 import React from "react";
 import { View, Text, StyleSheet, FlatList, Image, ScrollView, TouchableOpacity, PixelRatio } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,29 +31,61 @@ const HomeScreen = () => {
 
     const fetchImages = async () => {
         try {
-            // Fetch images from Supabase storage
-            const { data: images, error: imageError } = await supabase.storage.from("profile_pictures").list("", { limit: 20 });
-
-            if (imageError) {
-                console.error("Error fetching images:", imageError);
-                return;
-            }
-
-            // Fetch user details (replace 'profile_picture' with the correct column name)
-            const { data: users, error: userError } = await supabase.from("users_details").select("username, image_url"); // Change `image_url` if necessary
+            // Fetch user details (with profile picture URLs)
+            const { data: users, error: userError } = await supabase
+                .from("users_details")
+                .select("username, profile_picture");
 
             if (userError) {
                 console.error("Error fetching user details:", userError);
                 return;
             }
 
+            console.log("Users:", JSON.stringify(users, null, 2));
+
+            let allImages = [];
+
+            // Loop through each user and fetch their stored images
+            for (const user of users) {
+                if (!user.profile_picture) continue; // Skip if no profile picture
+
+                // Extract the folder name from the URL
+                const folderName = user.profile_picture.split("/").slice(-2, -1)[0];
+
+                // Fetch images from that specific folder
+                const { data: images, error: imageError } = await supabase
+                    .storage
+                    .from("profile_pictures")
+                    .list(folderName);
+
+                if (imageError) {
+                    console.error(`Error fetching images for ${folderName}:`, imageError);
+                    continue;
+                }
+
+                console.log(`Images in ${folderName}:`, images);
+
+                // Append folder name to images to get full paths
+                const imagesWithPath = images.map((img) => ({
+                    name: `${folderName}/${img.name}`, // Ensure full path
+                }));
+
+                allImages = [...allImages, ...imagesWithPath];
+            }
+
+            console.log("Final Images List:", JSON.stringify(allImages, null, 2));
+
             // Match images with usernames
-            const imagePosts = images.map((file) => {
-                const user = users.find((u) => u.image_url === file.name) || {}; // Match by filename
+            const imagePosts = allImages.map((file) => {
+                const imageUrl = supabase.storage.from("profile_pictures").getPublicUrl(file.name).data.publicUrl;
+                console.log(`Generated Image URL for ${file.name}:`, imageUrl);
+
+                const user = users.find((u) => u.profile_picture?.endsWith(file.name)) || {};
+
                 return {
-                    id: file.name, // Use filename as ID
-                    image: supabase.storage.from("profile_pictures").getPublicUrl(file.name).data.publicUrl,
-                    username: user.username || "Unknown User", // Use username if found
+                    id: file.name,
+                    image: imageUrl,
+                    username: user.username || "Unknown User",
                     likes: `${Math.floor(Math.random() * 10000)} Likes`,
                     comments: `${Math.floor(Math.random() * 5000)} Comments`,
                 };
@@ -63,6 +96,7 @@ const HomeScreen = () => {
             console.error("Error fetching data:", error);
         }
     };
+
 
 
     return (
