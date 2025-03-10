@@ -75,30 +75,36 @@ const HomeScreen = () => {
 
             console.log("Final Images List:", JSON.stringify(allImages, null, 2));
 
-            // Match images with usernames
+            // Fix: Use allImages instead of undefined images variable
             const imagePosts = allImages.map((file) => {
                 const imageUrl = supabase.storage.from("profile_pictures").getPublicUrl(file.name).data.publicUrl;
                 console.log(`Generated Image URL for ${file.name}:`, imageUrl);
 
-                const user = users.find((u) => u.profile_picture?.endsWith(file.name)) || {};
+                // Extract the user's email from the file path (folder name)
+                const userFolder = file.name.split("/")[0]; // e.g., "lomuotieno@gmail.com"
+
+                // Find the user whose folder (email) matches, ensuring profile_picture is not null
+                const matchingUser = users.find((u) => u.profile_picture && u.profile_picture.includes(userFolder));
+
+                console.log(`Matched User for Image ${file.name}:`, matchingUser ? matchingUser.username : "Unknown User");
 
                 return {
                     id: file.name,
                     image: imageUrl,
-                    username: user.username || "Unknown User",
+                    username: matchingUser ? matchingUser.username : "Unknown User",
                     likes: `${Math.floor(Math.random() * 10000)} Likes`,
                     comments: `${Math.floor(Math.random() * 5000)} Comments`,
                 };
             });
+
+
+
 
             setPosts(imagePosts);
         } catch (error) {
             console.error("Error fetching data:", error);
         }
     };
-
-
-
     return (
         <>
             <StatusBar style="auto" />
